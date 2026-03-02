@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPQ Sealed Room Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --border: #2a3050;
+    --text: #e2e8f8;
+    --muted: #6b7899;
+    --accent-same: #4ade80;
+    --accent-diff: #f87171;
+    --accent-stage: #60a5fa;
+    --glow-same: rgba(74, 222, 128, 0.15);
+    --glow-diff: rgba(248, 113, 113, 0.15);
+    --gold: #fbbf24;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(96,165,250,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(96,165,250,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  header h1 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-stage);
+    margin-bottom: 4px;
+  }
+
+  header p {
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .progress-track {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 32px;
+    justify-content: center;
+  }
+
+  .progress-dot {
+    width: 28px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.3s ease;
+  }
+
+  .progress-dot.active { background: var(--accent-stage); }
+  .progress-dot.same   { background: var(--accent-same); }
+  .progress-dot.diff   { background: var(--accent-diff); }
+  .progress-dot.next   { background: var(--gold); }
+
+  .combo-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .stage-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .combo-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 32px;
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.08);
+    transition: color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .combo-badge.is-terminal {
+    color: var(--accent-same);
+    border-color: rgba(74, 222, 128, 0.4);
+    box-shadow: 0 0 40px rgba(74, 222, 128, 0.12);
+  }
+
+  .combo-badge.animate-in {
+    animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes popIn {
+    0%   { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1);    opacity: 1; }
+  }
+
+  .history {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-height: 28px;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .history-combo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  .history-arrow { font-size: 0.65rem; color: var(--border); }
+
+  .history-tag {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    padding: 2px 5px;
+  }
+
+  .history-tag.same { background: var(--glow-same); color: var(--accent-same); border: 1px solid rgba(74,222,128,0.25); }
+  .history-tag.diff { background: var(--glow-diff); color: var(--accent-diff); border: 1px solid rgba(248,113,113,0.25); }
+  .history-tag.next { background: rgba(251,191,36,0.1); color: var(--gold); border: 1px solid rgba(251,191,36,0.25); }
+
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .question-text {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+    letter-spacing: 0.03em;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .question-text strong { color: var(--text); font-weight: 600; }
+
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .btn-row.single { grid-template-columns: 1fr; }
+
+  .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 16px 12px;
+    border-radius: 12px;
+    border: 1px solid;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    background: transparent;
+  }
+
+  .btn-same { border-color: rgba(74,222,128,0.3); color: var(--accent-same); }
+  .btn-same:hover {
+    background: var(--glow-same);
+    border-color: var(--accent-same);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(74,222,128,0.15);
+  }
+
+  .btn-diff { border-color: rgba(248,113,113,0.3); color: var(--accent-diff); }
+  .btn-diff:hover {
+    background: var(--glow-diff);
+    border-color: var(--accent-diff);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(248,113,113,0.15);
+  }
+
+  .btn-next { border-color: rgba(251,191,36,0.3); color: var(--gold); }
+  .btn-next:hover {
+    background: rgba(251,191,36,0.08);
+    border-color: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(251,191,36,0.12);
+  }
+
+  .btn:active { transform: translateY(0); }
+
+  .btn-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 400;
+    opacity: 0.65;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+
+  .info-card {
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .info-card.terminal {
+    background: var(--surface);
+    border: 1px solid rgba(74,222,128,0.25);
+  }
+
+  .info-card.dead {
+    background: var(--surface);
+    border: 1px solid rgba(248,113,113,0.25);
+  }
+
+  .info-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .info-card.terminal .info-label { color: var(--accent-same); }
+  .info-card.dead .info-label     { color: var(--accent-diff); }
+
+  .info-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .btn-reset {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-reset:hover {
+    border-color: var(--accent-stage);
+    color: var(--accent-stage);
+    background: rgba(96,165,250,0.05);
+  }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>OPQ Sealed Room</h1>
+    <p>APQ Stage 2 — Decision Guide</p>
+  </header>
+
+  <div class="progress-track" id="progressTrack">
+    <div class="progress-dot active" id="dot-0"></div>
+    <div class="progress-dot" id="dot-1"></div>
+    <div class="progress-dot" id="dot-2"></div>
+    <div class="progress-dot" id="dot-3"></div>
+    <div class="progress-dot" id="dot-4"></div>
+    <div class="progress-dot" id="dot-5"></div>
+  </div>
+
+  <div class="combo-display">
+    <div class="stage-label" id="stageLabel">Stage 1 — Try this combination</div>
+    <div class="combo-badge animate-in" id="comboBadge">5-0-0</div>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <!-- Question / Next card -->
+  <div class="question-card" id="questionCard">
+    <div class="question-text" id="questionText"></div>
+    <div class="btn-row" id="btnRow"></div>
+  </div>
+
+  <!-- Terminal info card -->
+  <div class="info-card terminal hidden" id="terminalCard">
+    <div class="info-label">✓ Final Answer</div>
+    <div class="info-desc" id="terminalDesc"></div>
+  </div>
+
+  <!-- Dead end info card -->
+  <div class="info-card dead hidden" id="deadCard">
+    <div class="info-label">✕ Dead End</div>
+    <div class="info-desc" id="deadDesc"></div>
+  </div>
+
+  <!-- Always-visible reset -->
+  <button class="btn-reset" onclick="reset()">↺ Start Over</button>
+</div>
+
+<script>
+const tree = {
+  '5-0-0': { same: '4-1-0', diff: '3-1-1' },
+  '4-1-0': { same: '3-2-0', diff: '3-0-2' },
+  '3-1-1': { same: '2-2-1', diff: '1-2-2' },
+  '3-2-0': { same: '2-3-0', diff: '4-0-1' },
+  '3-0-2': { same: '2-0-3', diff: null },
+  '2-2-1': { same: '1-3-1', diff: '1-1-3' },
+  '1-2-2': { same: '0-3-2', diff: null },
+  '2-3-0': { same: '1-4-0', diff: '4-0-1' },
+  '2-0-3': { same: '1-0-4', diff: '0-4-1' },
+  '1-1-3': { same: '0-1-4', diff: null },
+  '1-3-1': { same: '0-4-1', diff: '2-1-2' },
+  '0-3-2': { same: '0-2-3', diff: null },
+  '1-4-0': { same: '0-5-0', diff: null },
+  '4-0-1': { same: null,    diff: null },
+  '1-0-4': { same: '0-0-5', diff: null },
+  '0-4-1': { same: null,    diff: null },
+  '0-1-4': { same: null,    diff: null },
+  '0-2-3': { same: null,    diff: null },
+  '0-5-0': { same: null,    diff: null },
+  '0-0-5': { same: null,    diff: null },
+  '2-1-2': { same: '1-0-4', diff: '0-4-1' },
+};
+
+const stageNames = ['Stage 1','Stage 2','Stage 3','Stage 4','Stage 5','Stage 6','Stage 7'];
+
+let current = '5-0-0';
+let step = 0;
+let history = [];
+
+function isTerminal(combo) {
+  const n = tree[combo];
+  return !n || (n.same === null && n.diff === null);
+}
+
+// Returns { next, choice } if exactly one path, else null
+function onlyPath(combo) {
+  const n = tree[combo];
+  if (!n) return null;
+  if (n.same !== null && n.diff === null) return { next: n.same, choice: 'same' };
+  if (n.same === null && n.diff !== null) return { next: n.diff, choice: 'diff' };
+  return null;
+}
+
+function animateBadge(combo, terminal) {
+  const badge = document.getElementById('comboBadge');
+  badge.classList.remove('animate-in', 'is-terminal');
+  void badge.offsetWidth;
+  badge.textContent = combo;
+  if (terminal) badge.classList.add('is-terminal');
+  badge.classList.add('animate-in');
+}
+
+function renderHistory() {
+  document.getElementById('history').innerHTML = history.map((h, i) => `
+    <div class="history-item">
+      <span class="history-combo">${h.combo}</span>
+      <span class="history-tag ${h.choice}">${h.choice === 'same' ? 'S' : h.choice === 'diff' ? 'D' : '→'}</span>
+      ${i < history.length - 1 ? '<span class="history-arrow">›</span>' : ''}
+    </div>`).join('');
+}
+
+function renderQuestionCard() {
+  const single = onlyPath(current);
+  const qText = document.getElementById('questionText');
+  const btnRow = document.getElementById('btnRow');
+  document.getElementById('questionCard').classList.remove('hidden');
+  document.getElementById('terminalCard').classList.add('hidden');
+  document.getElementById('deadCard').classList.add('hidden');
+
+  if (single) {
+    qText.innerHTML = `Only one path leads forward from <strong>${current}</strong>.`;
+    btnRow.className = 'btn-row single';
+    btnRow.innerHTML = `
+      <button class="btn btn-next" onclick="chooseNext()">
+        Next
+        <span class="btn-sub">→ ${single.next}</span>
+      </button>`;
+  } else {
+    qText.innerHTML = `Did <strong>${current}</strong> match the seal?`;
+    btnRow.className = 'btn-row';
+    btnRow.innerHTML = `
+      <button class="btn btn-same" onclick="choose('same')">Same<span class="btn-sub">It matched</span></button>
+      <button class="btn btn-diff" onclick="choose('diff')">Different<span class="btn-sub">No match</span></button>`;
+  }
+}
+
+function markDot(idx, cls) {
+  const dot = document.getElementById(`dot-${idx}`);
+  if (dot) { dot.className = 'progress-dot ' + cls; }
+}
+
+function activateDot(idx) {
+  const dot = document.getElementById(`dot-${idx}`);
+  if (dot) dot.classList.add('active');
+}
+
+function choose(choice) {
+  const next = tree[current][choice];
+  markDot(step, choice);
+  history.push({ combo: current, choice });
+  step++;
+
+  if (!next) {
+    showDeadEnd(choice);
+    return;
+  }
+  advance(next);
+}
+
+function chooseNext() {
+  const single = onlyPath(current);
+  if (!single) return;
+  markDot(step, 'next');
+  history.push({ combo: current, choice: 'next' });
+  step++;
+  advance(single.next);
+}
+
+function advance(next) {
+  current = next;
+  activateDot(step);
+  renderHistory();
+
+  if (isTerminal(current)) {
+    showTerminal();
+    return;
+  }
+
+  animateBadge(current, false);
+  document.getElementById('stageLabel').textContent =
+    `${stageNames[step] || 'Stage ' + (step + 1)} — Try this combination`;
+  renderQuestionCard();
+}
+
+function showTerminal() {
+  animateBadge(current, true);
+  document.getElementById('stageLabel').textContent = 'Final Answer';
+  document.getElementById('questionCard').classList.add('hidden');
+  document.getElementById('terminalCard').classList.remove('hidden');
+  document.getElementById('deadCard').classList.add('hidden');
+  document.getElementById('terminalDesc').textContent =
+    `Your final combination is ${current}. Enter this into the sealed room.`;
+}
+
+function showDeadEnd(choice) {
+  document.getElementById('questionCard').classList.add('hidden');
+  document.getElementById('terminalCard').classList.add('hidden');
+  document.getElementById('deadCard').classList.remove('hidden');
+  document.getElementById('deadDesc').textContent =
+    `No path exists from ${current} going "${choice}". This route isn't in the guide — try retracing your steps.`;
+  renderHistory();
+}
+
+function reset() {
+  current = '5-0-0';
+  step = 0;
+  history = [];
+
+  for (let i = 0; i < 7; i++) {
+    const dot = document.getElementById(`dot-${i}`);
+    if (dot) { dot.className = 'progress-dot'; if (i === 0) dot.classList.add('active'); }
+  }
+
+  document.getElementById('stageLabel').textContent = 'Stage 1 — Try this combination';
+  document.getElementById('history').innerHTML = '';
+  document.getElementById('terminalCard').classList.add('hidden');
+  document.getElementById('deadCard').classList.add('hidden');
+  animateBadge('5-0-0', false);
+  renderQuestionCard();
+}
+
+// Init
+renderQuestionCard();
+</script>
+</body>
+</html>
