@@ -443,14 +443,16 @@
   .plat-box.top-occupied {
     border-color: #3a4060;
     background: #1a1f30;
+    padding: 2px;
   }
 
-  .top-x {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #3a4565;
-    user-select: none;
+  .top-char {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    image-rendering: pixelated;
+    display: block;
   }
 
   .plat.highlighted .plat-box.top-occupied {
@@ -458,8 +460,24 @@
     background: var(--green-bg);
   }
 
-  .plat.highlighted .top-x {
-    color: var(--green);
+  .plat.highlighted .top-char {
+    filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.6));
+  }
+
+  .bot-char {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    image-rendering: pixelated;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  .plat-box {
+    position: relative;
   }
 
   .plat-input {
@@ -1062,15 +1080,34 @@
 // ══════════════════════════════════════
 // TAB SWITCHING
 // ══════════════════════════════════════
+const TAB_MAP = { 'guide': 'summary', 'stage2': 's2', 'stage3': 's3' };
+const TAB_SLUG = { 'summary': 'guide', 's2': 'stage2', 's3': 'stage3' };
+
 function switchTab(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
+  else {
+    // activate the matching nav button without a direct reference
+    document.querySelectorAll('.nav-tab').forEach(t => {
+      if (t.getAttribute('onclick').includes("'" + id + "'")) t.classList.add('active');
+    });
+  }
+  // Update URL hash without triggering a scroll
+  history.replaceState(null, '', '#' + (TAB_SLUG[id] || id));
   if (id === 's3') {
     setTimeout(() => document.getElementById(`inp-${BOTTOM_PLATS[0]}`)?.focus(), 80);
   }
 }
+
+function loadTabFromHash() {
+  const slug = location.hash.replace('#', '').toLowerCase();
+  const id = TAB_MAP[slug] || 'summary';
+  switchTab(id, null);
+}
+
+window.addEventListener('hashchange', loadTabFromHash);
 
 // ══════════════════════════════════════
 // SUMMARY ACCORDION
@@ -1363,17 +1400,22 @@ function getTopCombos(T) {
   return [];
 }
 
+const TOP_CHARS = ['meru', 'pov', 'fiona', 'ward'];
+
 function s3renderPlatforms() {
-  document.getElementById('topRow').innerHTML = TOP_PLATS.map(name => `
+  document.getElementById('topRow').innerHTML = TOP_PLATS.map((name, i) => `
     <div class="plat" id="top-${name}">
       <div class="plat-name">${name}</div>
-      <div class="plat-box top-occupied"><span class="top-x">✕</span></div>
+      <div class="plat-box top-occupied">
+        <img class="top-char" src="resources/${TOP_CHARS[i]}.png" alt="${TOP_CHARS[i]}">
+      </div>
     </div>`).join('');
 
   document.getElementById('bottomRow').innerHTML = BOTTOM_PLATS.map((name, i) => `
     <div class="plat" id="bot-${name}">
       <div class="plat-name">${name}</div>
       <div class="plat-box" id="box-${name}">
+        <img class="bot-char" id="pm-${name}" src="resources/peacemaker.png" alt="peacemaker" style="display:${i === 0 ? 'block' : 'none'}">
         <input class="plat-input" id="inp-${name}" type="text" inputmode="numeric"
           maxlength="1" placeholder="·" data-idx="${i}"
           oninput="s3onInput(this)" onkeydown="s3onKey(event,this)"
@@ -1384,6 +1426,19 @@ function s3renderPlatforms() {
     </div>`).join('');
 }
 
+function s3updatePeacemaker() {
+  // Find the first empty input — peacemaker sits on that platform
+  // If all filled, hide entirely
+  const firstEmpty = BOTTOM_PLATS.findIndex(name => {
+    const v = document.getElementById(`inp-${name}`)?.value;
+    return !v || v === '';
+  });
+  BOTTOM_PLATS.forEach((name, i) => {
+    const pm = document.getElementById(`pm-${name}`);
+    if (pm) pm.style.display = (i === firstEmpty) ? 'block' : 'none';
+  });
+}
+
 function s3onInput(el) {
   el.value = el.value.replace(/[^1-5]/g, '');
   if (el.value.length === 1) {
@@ -1392,6 +1447,7 @@ function s3onInput(el) {
       document.getElementById(`inp-${BOTTOM_PLATS[idx + 1]}`)?.focus();
     else el.blur();
   }
+  s3updatePeacemaker();
   s3update();
 }
 
@@ -1400,6 +1456,7 @@ function s3onKey(e, el) {
   if (e.key === 'Backspace' && el.value === '' && idx > 0) {
     const prev = document.getElementById(`inp-${BOTTOM_PLATS[idx - 1]}`);
     if (prev) { prev.value = ''; prev.focus(); }
+    s3updatePeacemaker();
     s3update();
   }
 }
@@ -1500,12 +1557,16 @@ function s3reset() {
     if (inp) inp.value = '';
   });
   s3clearHighlights();
+  s3updatePeacemaker();
   document.getElementById('resultArea').innerHTML = '';
   document.getElementById(`inp-${BOTTOM_PLATS[0]}`)?.focus();
 }
 
 // Init Stage 3
 s3renderPlatforms();
+
+// Route to correct tab based on URL hash
+loadTabFromHash();
 </script>
 </body>
 </html>
